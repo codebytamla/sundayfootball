@@ -1,0 +1,35 @@
+name: windows-build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}\vcpkg
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone vcpkg
+        run: git clone https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
+
+      - name: Bootstrap vcpkg
+        run: '& "$env:VCPKG_ROOT\bootstrap-vcpkg.bat"'
+
+      - name: Install dependencies
+        run: '& "$env:VCPKG_ROOT\vcpkg.exe" install --triplet x86-windows boost:x86-windows sdl2 sdl2-image[libjpeg-turbo] sdl2-ttf sdl2-gfx opengl openal-soft sqlite3'
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -A Win32
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
+          -DVCPKG_TARGET_TRIPLET=x86-windows
+          -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=TRUE
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
